@@ -932,24 +932,33 @@ function handleBuy(){
   if(!email||!email.includes('@')){const el=document.getElementById('f-email');el.classList.add('err');el.focus();setTimeout(()=>el.classList.remove('err'),2000);return;}
   const n=selected.size;
   if(n===0) return;
-  const tier=getTier(n);
-  const total=calcPrice(n);
   const url=document.getElementById('f-url').value.trim();
   const msg=document.getElementById('f-msg').value.trim();
 
-  // Save pending purchase in localStorage so we can restore after Stripe redirect
-  const pending={
-    name, email, url, msg,
-    color: selColor,
-    pixels: [...selected],
-    total: parseFloat(total)
-  };
-  localStorage.setItem('pending_purchase', JSON.stringify(pending));
+  const btn=document.querySelector('.btn-cta');
+  btn.textContent='Chargement...';
+  btn.disabled=true;
 
-  // Redirect to Stripe with pre-filled amount (in cents)
-  const amountCents = Math.round(parseFloat(total) * 100);
-  const stripeUrl = `https://buy.stripe.com/28EfZb4IB71PfoN1ia9EI00?prefilled_email=${encodeURIComponent(email)}&amount=${amountCents}`;
-  window.location.href = stripeUrl;
+  fetch('/.netlify/functions/create-checkout',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({pixels:[...selected],color:selColor,name,email,msg,url})
+  })
+  .then(r=>r.json())
+  .then(data=>{
+    if(data.url){
+      window.location.href=data.url;
+    } else {
+      alert('Erreur : '+(data.error||'Impossible de créer la session'));
+      btn.textContent='Procéder au paiement →';
+      btn.disabled=false;
+    }
+  })
+  .catch(err=>{
+    alert('Erreur réseau : '+err.message);
+    btn.textContent='Procéder au paiement →';
+    btn.disabled=false;
+  });
 }
 function closeConfirm(e){if(!e||e.target===document.getElementById('confirm'))document.getElementById('confirm').classList.remove('open');}
 
