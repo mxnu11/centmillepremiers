@@ -1007,7 +1007,6 @@ if(pending){
 }
 
 resize();
-initMarket();
 
 // ─── FIREBASE INIT ───────────────────────────────────
 const firebaseConfig = {
@@ -1062,6 +1061,9 @@ db.ref('pixels').on('child_added', snap => {
 function savePurchase(p){
   db.ref('pixels').push(p);
 }
+
+// Init market après Firebase
+initMarket();
 
 </script>
 </body>
