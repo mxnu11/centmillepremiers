@@ -234,13 +234,13 @@ input[type="color"]{width:32px;height:24px;border:1px solid var(--b2);background
 <div class="overlay" id="overlay" onclick="overlayClick(event)">
   <div class="popup">
     <div class="p-hd">
-      <div><div class="p-title">Réserver vos pixels</div><div class="p-sub" id="p-sub"></div></div>
+      <div><div class="p-title" id="p-title">Réserver vos pixels</div><div class="p-sub" id="p-sub"></div></div>
       <button class="p-close" onclick="closePopup()">✕</button>
     </div>
     <div class="p-body">
       <div><span class="flabel">Couleur</span><div class="pp-pal" id="pp-pal"></div>
         <div class="cc-row"><label>Personnalisée</label><input type="color" id="pp-cc" value="#c9a84c" oninput="setColor(this.value,null)"></div></div>
-      <div><span class="flabel">Tarifs dégressifs</span>
+      <div id="pricing-table"><span class="flabel">Tarifs dégressifs</span>
         <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--mut2);display:flex;flex-direction:column;gap:4px;">
           <div style="display:flex;justify-content:space-between;"><span>1 – 49 pixels</span><span style="color:var(--text)">1,00 €/px</span></div>
           <div style="display:flex;justify-content:space-between;"><span>50 – 199 pixels</span><span style="color:var(--gold2)">0,95 €/px <span style="color:var(--muted)">−5%</span></span></div>
@@ -249,7 +249,7 @@ input[type="color"]{width:32px;height:24px;border:1px solid var(--b2);background
         </div>
       </div>
       <div><span class="flabel">Nom / Marque *</span><input class="finput" id="f-name" type="text" placeholder="Ex : Studio Manu…"></div>
-      <div><span class="flabel">Email * (pour retrouver vos pixels)</span><input class="finput" id="f-email" type="email" placeholder="votre@email.fr"></div>
+      <div id="f-email-row"><span class="flabel">Email * (pour retrouver vos pixels)</span><input class="finput" id="f-email" type="email" placeholder="votre@email.fr"></div>
       <div><span class="flabel">Site internet</span><input class="finput" id="f-url" type="url" placeholder="https://…"></div>
       <div><span class="flabel">Message (visible au survol)</span><textarea class="finput" id="f-msg" rows="2" placeholder="On est là depuis le jour 1 🎉"></textarea></div>
     </div>
@@ -726,12 +726,56 @@ function editPurchase(idx){
   const myPurchases=purchases.filter(p=>p.email===myEmail);
   const p=myPurchases[idx];
   if(!p) return;
-  // Pre-fill popup form
+
+  // Pre-fill form
   document.getElementById('f-name').value=p.name||'';
   document.getElementById('f-url').value=p.url||'';
   document.getElementById('f-msg').value=p.msg||'';
-  // Open popup in edit mode
+
+  // Mode édition — cache prix et email, change le bouton
   document.getElementById('p-sub').textContent=`Modifier vos infos · ${p.pixels.length.toLocaleString('fr-FR')} pixels`;
+  document.getElementById('p-title').textContent='Modifier vos infos';
+  document.getElementById('pricing-table').style.display='none';
+  document.getElementById('f-email-row').style.display='none';
+  const btn=document.querySelector('.btn-cta');
+  btn.textContent='Enregistrer les modifications';
+  btn.onclick=()=>saveEdit(p);
+  document.getElementById('overlay').classList.add('open');
+}
+
+function saveEdit(p){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){const el=document.getElementById('f-name');el.classList.add('err');el.focus();setTimeout(()=>el.classList.remove('err'),2000);return;}
+  const url=document.getElementById('f-url').value.trim();
+  const msg=document.getElementById('f-msg').value.trim();
+
+  // Met à jour dans Firebase
+  db.ref('pixels').orderByChild('email').equalTo(p.email).once('value',snap=>{
+    snap.forEach(child=>{
+      if(child.val().ts===p.ts){
+        child.ref.update({name,url,msg});
+      }
+    });
+  });
+
+  // Met à jour localement
+  p.name=name; p.url=url; p.msg=msg;
+  closePopup();
+  renderMePanel();
+}
+
+function openPopup(){
+  // Reset au mode achat
+  document.getElementById('p-title').textContent='Réserver vos pixels';
+  document.getElementById('pricing-table').style.display='';
+  document.getElementById('f-email-row').style.display='';
+  const btn=document.querySelector('.btn-cta');
+  btn.textContent='Procéder au paiement →';
+  btn.onclick=handleBuy;
+  const n=selected.size;
+  const tier=getTier(n);
+  const total=calcPrice(n);
+  document.getElementById('p-sub').textContent=`${n.toLocaleString('fr-FR')} pixel${n>1?'s':''} · ${tier.label} · Total ${total} €`;
   document.getElementById('overlay').classList.add('open');
 }
 
@@ -935,13 +979,6 @@ document.getElementById('nav-bar').addEventListener('touchstart',e=>{e.stopPropa
 document.getElementById('nav-bar').addEventListener('mousedown',e=>{e.stopPropagation();dragging=false;},{capture:true});
 
 // ─── POPUP / BUY ─────────────────────────────────────
-function openPopup(){
-  const n=selected.size;
-  const tier=getTier(n);
-  const total=calcPrice(n);
-  document.getElementById('p-sub').textContent=`${n.toLocaleString('fr-FR')} pixel${n>1?'s':''} · ${tier.label} · Total ${total} €`;
-  document.getElementById('overlay').classList.add('open');
-}
 function closePopup(){document.getElementById('overlay').classList.remove('open');}
 function overlayClick(e){if(e.target===document.getElementById('overlay'))closePopup();}
 function handleBuy(){
