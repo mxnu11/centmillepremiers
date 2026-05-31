@@ -185,11 +185,18 @@ input[type="color"]{width:32px;height:24px;border:1px solid var(--b2);background
         <button class="tab" onclick="switchTab('feed',this)">Activité</button>
         <button class="tab" onclick="switchTab('me',this)">Mes px</button>
         <button class="tab" onclick="switchTab('market',this)">Marché</button>
-      </div>
+        </div>
       <div class="tpane active" id="tab-lb"><div id="lb-desk"><div class="estate">Aucun achat pour l'instant.<br><strong>Sois le premier</strong>.</div></div></div>
       <div class="tpane" id="tab-feed"><div id="feed-desk"><div class="estate">Le canvas attend son premier acheteur.</div></div></div>
       <div class="tpane" id="tab-me"><div id="me-desk"></div></div>
-      <div class="tpane" id="tab-market"><div id="market-desk"></div></div>
+      <div class="tpane" id="tab-market">
+        <div style="padding:40px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;">
+          <div style="font-size:32px;">🏪</div>
+          <div style="font-family:'Playfair Display',serif;font-size:22px;color:var(--gold2);">Marché de revente</div>
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;">À venir</div>
+          <div style="font-size:12px;color:var(--mut2);line-height:1.8;max-width:200px;">Le marché de revente de pixels ouvrira prochainement.</div>
+        </div>
+      </div>
     </div>
   </div>
   <div id="nav-bar">
@@ -214,7 +221,14 @@ input[type="color"]{width:32px;height:24px;border:1px solid var(--b2);background
 </div>
 <div class="mobile-page" id="pg-market">
   <div class="mp-hd"><div class="mp-title">🏪 Marché</div><button class="mp-close" onclick="closeMobilePage('market')">✕</button></div>
-  <div class="mp-body"><div id="market-mob"></div></div>
+  <div class="mp-body">
+    <div style="padding:60px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;">
+      <div style="font-size:40px;">🏪</div>
+      <div style="font-family:'Playfair Display',serif;font-size:24px;color:var(--gold2);">Marché de revente</div>
+      <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;">À venir</div>
+      <div style="font-size:13px;color:var(--mut2);line-height:1.8;max-width:260px;">Le marché de revente de pixels ouvrira prochainement.</div>
+    </div>
+  </div>
 </div>
 
 <div class="overlay" id="overlay" onclick="overlayClick(event)">
@@ -720,7 +734,8 @@ function editPurchase(idx){
   document.getElementById('overlay').classList.add('open');
 }
 
-// ─── MARCHÉ DE REVENTE ───────────────────────────────
+// ─── MARKET ENABLED FLAG ─────────────────────────────
+const MARKET_ENABLED = false; // passer à true pour activer le marché
 const MARKET_COMMISSION = 0.12; // 12% commission
 const MAX_RESALE_MULTIPLIER = 10; // max 10× prix initial
 
@@ -769,12 +784,7 @@ function renderMarket(){
     }
 
     // Mettre en vente section (only if logged in)
-    if(myEmail){
-      const myPurchases=purchases.filter(p=>p.email===myEmail);
-      if(myPurchases.length>0){
-        html+=`
-        <div style="height:1px;background:var(--b1);"></div>
-        <div style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--mut2);">Mettre en vente</div>`;
+    if(myEmail && MARKET_ENABLED){
         myPurchases.forEach((p,i)=>{
           const initPrice=getInitialPrice(p.pixels.length);
           const maxPrice=(initPrice*MAX_RESALE_MULTIPLIER).toFixed(2);
