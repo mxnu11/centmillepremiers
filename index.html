@@ -998,44 +998,44 @@ function highlightUserPixels(name){
   const allPixels=userPurchases.flatMap(p=>p.pixels);
   if(!allPixels.length) return;
 
-  // Calcule le centre de tous les pixels de la personne
+  // Centre de tous les pixels de la personne
   const xs=allPixels.map(i=>i%GW);
   const ys=allPixels.map(i=>Math.floor(i/GW));
   const cx=Math.round((Math.min(...xs)+Math.max(...xs))/2);
   const cy=Math.round((Math.min(...ys)+Math.max(...ys))/2);
 
-  // Zoom à 8× pour que les pixels soient bien visibles et cliquables
-  zoom=8;
-  document.getElementById('zlbl').textContent='8×';
-
-  // Centre le canvas sur le milieu des pixels
-  const c=cellPx();
-  panX=Math.floor(cv.width/2)-cx*c;
-  panY=Math.floor(cv.height/2)-cy*c;
-
-  draw();
-
-  // Flash doré
-  let flashes=0;
-  const flash=setInterval(()=>{
-    flashes++;
-    const {ox,oy}=originXY();
-    const c2=cellPx();
-    allPixels.forEach(i=>{
-      const px=i%GW, py=Math.floor(i/GW);
-      ctx.fillStyle=flashes%2===0?'rgba(201,168,76,0.7)':'rgba(0,0,0,0)';
-      ctx.fillRect(ox+px*c2, oy+py*c2, c2, c2);
-    });
-    if(flashes>=6){clearInterval(flash);draw();}
-  },250);
-
-  // Ferme le panel mobile si ouvert
+  // Ferme le panel mobile AVANT de zoomer pour que cv.width/height soient corrects
   ['lb','feed','me','market'].forEach(p=>{
     const el=document.getElementById('pg-'+p);
     if(el) el.classList.remove('open');
   });
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('nb-canvas').classList.add('active');
+
+  // Applique le zoom à 8× APRÈS que le canvas soit visible
+  setTimeout(()=>{
+    zoom=8;
+    document.getElementById('zlbl').textContent='8×';
+    // Recalcule cellPx() avec le bon zoom
+    const c=cellPx();
+    panX=Math.floor(cv.width/2) - cx*c;
+    panY=Math.floor(cv.height/2) - cy*c;
+    draw();
+
+    // Flash doré
+    let flashes=0;
+    const flash=setInterval(()=>{
+      flashes++;
+      const {ox,oy}=originXY();
+      const c2=cellPx();
+      allPixels.forEach(i=>{
+        const px=i%GW, py=Math.floor(i/GW);
+        ctx.fillStyle=flashes%2===0?'rgba(201,168,76,0.7)':'rgba(0,0,0,0)';
+        ctx.fillRect(ox+px*c2, oy+py*c2, c2, c2);
+      });
+      if(flashes>=6){clearInterval(flash);draw();}
+    },250);
+  }, 50);
 }
 
 function updateLb(){
