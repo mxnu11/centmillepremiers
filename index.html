@@ -992,7 +992,68 @@ function onNewPurchase(p){
   document.getElementById('hd-pct').textContent=pct+' %';
   updateLb();addFeed(p);
 }
-function updateLb(){const agg=purchases.reduce((acc,p)=>{const ex=acc.find(a=>a.name===p.name);if(ex)ex.px+=p.pixels.length;else acc.push({name:p.name,color:p.color,px:p.pixels.length});return acc;},[]).sort((a,b)=>b.px-a.px).slice(0,20);['desk','mob'].forEach(s=>{const el=document.getElementById('lb-'+s);if(!agg.length)return;el.innerHTML='';agg.forEach((a,i)=>{const row=document.createElement('div');row.className='lb-row';row.innerHTML=`<div class="lrank">#${i+1}</div><div class="lcolor" style="background:${a.color}"></div><div class="lname">${esc(a.name)}</div><div class="lpx">${a.px.toLocaleString('fr-FR')} px</div>`;el.appendChild(row);});});}
+function highlightUserPixels(name){
+  // Trouve tous les pixels de cette personne
+  const userPurchases=purchases.filter(p=>p.name===name);
+  if(!userPurchases.length) return;
+  const allPixels=userPurchases.flatMap(p=>p.pixels);
+  if(!allPixels.length) return;
+
+  // Centre le canvas sur le premier pixel
+  const firstIdx=allPixels[0];
+  const gx=firstIdx%GW, gy=Math.floor(firstIdx/GW);
+  const c=cellPx();
+  panX=Math.floor(cv.width/2)-gx*c;
+  panY=Math.floor(cv.height/2)-gy*c;
+
+  // Surbrillance temporaire — flash doré
+  let flashes=0;
+  const flash=setInterval(()=>{
+    flashes++;
+    // Dessine un halo doré sur les pixels
+    const {ox,oy}=originXY();
+    allPixels.forEach(i=>{
+      const px=i%GW, py=Math.floor(i/GW);
+      ctx.fillStyle=flashes%2===0?'rgba(201,168,76,0.8)':'rgba(201,168,76,0)';
+      ctx.fillRect(ox+px*c, oy+py*c, c, c);
+    });
+    if(flashes>=6){clearInterval(flash);draw();}
+  },200);
+
+  draw();
+
+  // Ferme le panel mobile si ouvert
+  ['lb','feed','me','market'].forEach(p=>{
+    const el=document.getElementById('pg-'+p);
+    if(el) el.classList.remove('open');
+  });
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('nb-canvas').classList.add('active');
+}
+
+function updateLb(){
+  const agg=purchases.reduce((acc,p)=>{
+    const ex=acc.find(a=>a.name===p.name);
+    if(ex){ex.px+=p.pixels.length;}
+    else acc.push({name:p.name,color:p.color,px:p.pixels.length});
+    return acc;
+  },[]).sort((a,b)=>b.px-a.px).slice(0,20);
+
+  ['desk','mob'].forEach(s=>{
+    const el=document.getElementById('lb-'+s);
+    if(!agg.length) return;
+    el.innerHTML=`<div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);padding:8px 16px;border-bottom:1px solid var(--b1);letter-spacing:.08em;">👆 Clique sur un nom pour voir ses pixels</div>`;
+    agg.forEach((a,i)=>{
+      const row=document.createElement('div');
+      row.className='lb-row';
+      row.style.cursor='pointer';
+      row.title=`Voir les pixels de ${a.name}`;
+      row.innerHTML=`<div class="lrank">#${i+1}</div><div class="lcolor" style="background:${a.color}"></div><div class="lname">${esc(a.name)}</div><div class="lpx">${a.px.toLocaleString('fr-FR')} px</div>`;
+      row.addEventListener('click',()=>highlightUserPixels(a.name));
+      el.appendChild(row);
+    });
+  });
+}
 function addFeed(p){['desk','mob'].forEach(s=>{const el=document.getElementById('feed-'+s);const em=el.querySelector('.estate');if(em)em.remove();const cnt=p.pixels.length;const item=document.createElement('div');item.className='feed-item';item.innerHTML=`<div class="fdot" style="background:${p.color}"></div><div class="fbody"><div><span class="fname">${esc(p.name)}</span> · <strong>${cnt.toLocaleString('fr-FR')} px</strong></div>${p.msg?`<div class="fmsg">"${esc(p.msg)}"</div>`:''}</div><div class="ftime">maintenant</div>`;el.insertBefore(item,el.firstChild);while(el.children.length>30)el.removeChild(el.lastChild);});}
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
