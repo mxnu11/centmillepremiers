@@ -687,7 +687,7 @@ PALETTE.forEach(hex=>{
 function setColor(hex,el){selColor=hex;document.querySelectorAll('.pp-sw').forEach(s=>s.classList.remove('active'));if(el)el.classList.add('active');document.getElementById('pp-cc').value=hex;draw();}
 
 // ─── MES PIXELS ──────────────────────────────────────
-let myEmail=''; // set after purchase
+let myEmail=localStorage.getItem('saved_email')||''; // restaure email si "rester connecté"
 
 function renderMePanel(){
   ['desk','mob'].forEach(suffix=>{
@@ -699,6 +699,10 @@ function renderMePanel(){
         <div style="padding:20px;">
           <div class="flabel" style="margin-bottom:8px;">Retrouver mes pixels</div>
           <input class="finput" id="me-email-${suffix}" type="email" placeholder="Email utilisé lors de l'achat" style="margin-bottom:8px;">
+          <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--mut2);cursor:pointer;">
+            <input type="checkbox" id="me-remember-${suffix}" checked style="accent-color:var(--gold);width:14px;height:14px;">
+            Rester connecté sur cet appareil
+          </label>
           <button onclick="lookupEmail('${suffix}')" style="width:100%;background:var(--gold);color:#0d0d0f;border:none;padding:10px;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;">Rechercher →</button>
           <div id="me-msg-${suffix}" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:8px;text-align:center;"></div>
         </div>`;
@@ -725,13 +729,14 @@ function renderMePanel(){
           <button onclick="editPurchase(${i})" style="background:none;border:1px solid var(--b2);color:var(--mut2);padding:6px;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;text-align:left;transition:color .2s;">✏ Modifier mes infos</button>
         </div>`;
     });
-    html+=`<button onclick="myEmail='';renderMePanel();" style="background:none;border:none;color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;text-decoration:underline;">Se déconnecter</button></div>`;
+    html+=`<button onclick="myEmail='';localStorage.removeItem('saved_email');renderMePanel();" style="background:none;border:none;color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;text-decoration:underline;">Se déconnecter</button></div>`;
     el.innerHTML=html;
   });
 }
 
 function lookupEmail(suffix){
   const email=document.getElementById(`me-email-${suffix}`).value.trim().toLowerCase();
+  const remember=document.getElementById(`me-remember-${suffix}`)?.checked;
   const msgEl=document.getElementById(`me-msg-${suffix}`);
   if(!email){msgEl.textContent='Saisis ton email.';return;}
   const found=purchases.filter(p=>p.email&&p.email.toLowerCase()===email);
@@ -740,6 +745,8 @@ function lookupEmail(suffix){
     return;
   }
   myEmail=email;
+  if(remember) localStorage.setItem('saved_email', email);
+  else localStorage.removeItem('saved_email');
   renderMePanel();
 }
 
@@ -1160,6 +1167,7 @@ if(pending){
     const p=JSON.parse(pending);
     localStorage.removeItem('pending_purchase');
     myEmail=p.email;
+    localStorage.setItem('saved_email', p.email);
     // Affiche message de confirmation — les pixels arriveront via webhook
     setTimeout(()=>{
       document.getElementById('conf-body').innerHTML=
