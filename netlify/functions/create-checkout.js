@@ -15,15 +15,12 @@ exports.handler = async (event) => {
   if(event.httpMethod !== 'POST'){
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
-
   const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
   const body = JSON.parse(event.body);
   const { pixels, color, name, email, msg, url } = body;
-
   const n = pixels.length;
   const pricePerPixel = getTierPrice(n);
   const totalCents = Math.round(n * pricePerPixel * 100);
-
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -42,24 +39,15 @@ exports.handler = async (event) => {
       }],
       metadata: {
         pixels: JSON.stringify(pixels),
-        color,
-        name,
-        email,
+        color, name, email,
         msg: msg || '',
         url: url || '',
       },
       success_url: `${process.env.URL}/?payment=success`,
       cancel_url:  `${process.env.URL}/?payment=cancel`,
     });
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ url: session.url }),
-    };
+    return { statusCode: 200, body: JSON.stringify({ url: session.url }) };
   } catch(err){
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
