@@ -17,10 +17,23 @@ exports.handler = async (event) => {
   }
   const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
   const body = JSON.parse(event.body);
-  const { pixels, color, name, email, msg, url } = body;
+  const { pixels, color, name, email, msg, url, isResale, askPrice, listingKey, sellerEmail } = body;
+
   const n = pixels.length;
-  const pricePerPixel = getTierPrice(n);
-  const totalCents = Math.round(n * pricePerPixel * 100);
+  // Prix verrouillé côté serveur
+  const pricePerPixel = isResale ? null : getTierPrice(n);
+  const totalCents = isResale
+    ? Math.round(askPrice * 100)
+    : Math.round(n * pricePerPixel * 100);
+
+  const productName = isResale
+    ? `Revente — ${n} pixel${n>1?'s':''} · Les Cent Mille Premiers`
+    : `${n} pixel${n>1?'s':''} — Les Cent Mille Premiers`;
+
+  const description = isResale
+    ? `Achat secondaire · vendeur: ${sellerEmail}`
+    : `${pricePerPixel.toFixed(2)} €/px · ${name}`;
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -30,10 +43,7 @@ exports.handler = async (event) => {
         price_data: {
           currency: 'eur',
           unit_amount: totalCents,
-          product_data: {
-            name: `${n} pixel${n>1?'s':''} — Les Cent Mille Premiers`,
-            description: `${pricePerPixel.toFixed(2)} €/px · ${name}`,
-          },
+          product_data: { name: productName, description },
         },
         quantity: 1,
       }],
@@ -42,6 +52,10 @@ exports.handler = async (event) => {
         color, name, email,
         msg: msg || '',
         url: url || '',
+        isResale: isResale ? 'true' : 'false',
+        listingKey: listingKey || '',
+        sellerEmail: sellerEmail || '',
+        askPrice: askPrice ? String(askPrice) : '',
       },
       success_url: `${process.env.URL}/?payment=success`,
       cancel_url:  `${process.env.URL}/?payment=cancel`,

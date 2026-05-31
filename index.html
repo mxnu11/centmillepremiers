@@ -848,25 +848,29 @@ function buyListing(idx){
   const buyerEmail=prompt('Ton email pour confirmer l\'achat :');
   if(!buyerEmail||!buyerEmail.includes('@')) return;
 
-  // Save pending resale purchase
-  const pending={
-    name: l.name,
-    email: buyerEmail,
-    color: l.color,
-    pixels: l.pixels,
-    msg: l.msg,
-    url: l.url,
-    total: l.askPrice,
-    isResale: true,
-    listingKey: l.key,
-    sellerEmail: l.sellerEmail,
-    ts: Date.now()
-  };
-  localStorage.setItem('pending_purchase', JSON.stringify(pending));
-
-  // Redirect to Stripe with resale amount
-  const amountCents=Math.round(l.askPrice*100);
-  window.location.href=`https://buy.stripe.com/28EfZb4IB71PfoN1ia9EI00?prefilled_email=${encodeURIComponent(buyerEmail)}&amount=${amountCents}`;
+  // Appel Netlify Function avec montant verrouillé
+  fetch('/.netlify/functions/create-checkout',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      pixels: l.pixels,
+      color: l.color,
+      name: l.name,
+      email: buyerEmail,
+      msg: l.msg||'',
+      url: l.url||'',
+      isResale: true,
+      askPrice: l.askPrice,
+      listingKey: l.key,
+      sellerEmail: l.sellerEmail
+    })
+  })
+  .then(r=>r.json())
+  .then(data=>{
+    if(data.url) window.location.href=data.url;
+    else alert('Erreur : '+(data.error||'Impossible de créer la session'));
+  })
+  .catch(err=>alert('Erreur réseau : '+err.message));
 }
 
 // Load market listings from Firebase
