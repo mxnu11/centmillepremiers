@@ -185,7 +185,7 @@ input[type="color"]{width:32px;height:24px;border:1px solid var(--b2);background
         <button class="tab" onclick="switchTab('feed',this)">Activité</button>
         <button class="tab" onclick="switchTab('me',this)">Mes px</button>
         <button class="tab" onclick="switchTab('market',this)">Marché</button>
-        </div>
+      </div>
       <div class="tpane active" id="tab-lb"><div id="lb-desk"><div class="estate">Aucun achat pour l'instant.<br><strong>Sois le premier</strong>.</div></div></div>
       <div class="tpane" id="tab-feed"><div id="feed-desk"><div class="estate">Le canvas attend son premier acheteur.</div></div></div>
       <div class="tpane" id="tab-me"><div id="me-desk"></div></div>
@@ -783,8 +783,12 @@ function renderMarket(){
       });
     }
 
-    // Mettre en vente section (only if logged in)
+    // Mettre en vente section (only if logged in AND market enabled)
     if(myEmail && MARKET_ENABLED){
+      const myPurchases=purchases.filter(p=>p.email===myEmail);
+      if(myPurchases.length>0){
+        html+=`<div style="height:1px;background:var(--b1);"></div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--mut2);">Mettre en vente</div>`;
         myPurchases.forEach((p,i)=>{
           const initPrice=getInitialPrice(p.pixels.length);
           const maxPrice=(initPrice*MAX_RESALE_MULTIPLIER).toFixed(2);
@@ -811,7 +815,7 @@ function renderMarket(){
           </div>`;
         });
       }
-    } else {
+    } else if(!myEmail) {
       html+=`<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;padding:12px;">Connecte-toi dans "Mes px" pour vendre tes pixels.</div>`;
     }
 
