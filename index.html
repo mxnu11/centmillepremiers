@@ -1016,10 +1016,18 @@ function highlightUserPixels(name){
   setTimeout(()=>{
     zoom=8;
     document.getElementById('zlbl').textContent='8×';
-    // Recalcule cellPx() avec le bon zoom
-    const c=cellPx();
-    panX=Math.floor(cv.width/2) - cx*c;
-    panY=Math.floor(cv.height/2) - cy*c;
+    // cellPx() = baseCell() * zoom
+    // baseCell() = floor(min(W/400, H/250))
+    // Pour centrer (cx,cy) au milieu de l'écran :
+    // ox + cx*c = W/2  →  panX = W/2 - cx*c - floor((W-400*c)/2)
+    const b=baseCell();
+    const c=b*8; // cellPx à zoom 8
+    const W=cv.width, H=cv.height;
+    const gridOffX=Math.floor((W-GW*c)/2); // offset naturel centré
+    const gridOffY=Math.floor((H-GH*c)/2);
+    // On veut que le pixel (cx,cy) soit au centre de l'écran
+    panX=Math.floor(W/2) - gridOffX - cx*c - Math.floor(c/2);
+    panY=Math.floor(H/2) - gridOffY - cy*c - Math.floor(c/2);
     draw();
 
     // Flash doré
