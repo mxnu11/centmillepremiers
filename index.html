@@ -993,34 +993,41 @@ function onNewPurchase(p){
   updateLb();addFeed(p);
 }
 function highlightUserPixels(name){
-  // Trouve tous les pixels de cette personne
   const userPurchases=purchases.filter(p=>p.name===name);
   if(!userPurchases.length) return;
   const allPixels=userPurchases.flatMap(p=>p.pixels);
   if(!allPixels.length) return;
 
-  // Centre le canvas sur le premier pixel
-  const firstIdx=allPixels[0];
-  const gx=firstIdx%GW, gy=Math.floor(firstIdx/GW);
-  const c=cellPx();
-  panX=Math.floor(cv.width/2)-gx*c;
-  panY=Math.floor(cv.height/2)-gy*c;
+  // Calcule le centre de tous les pixels de la personne
+  const xs=allPixels.map(i=>i%GW);
+  const ys=allPixels.map(i=>Math.floor(i/GW));
+  const cx=Math.round((Math.min(...xs)+Math.max(...xs))/2);
+  const cy=Math.round((Math.min(...ys)+Math.max(...ys))/2);
 
-  // Surbrillance temporaire — flash doré
+  // Zoom à 8× pour que les pixels soient bien visibles et cliquables
+  zoom=8;
+  document.getElementById('zlbl').textContent='8×';
+
+  // Centre le canvas sur le milieu des pixels
+  const c=cellPx();
+  panX=Math.floor(cv.width/2)-cx*c;
+  panY=Math.floor(cv.height/2)-cy*c;
+
+  draw();
+
+  // Flash doré
   let flashes=0;
   const flash=setInterval(()=>{
     flashes++;
-    // Dessine un halo doré sur les pixels
     const {ox,oy}=originXY();
+    const c2=cellPx();
     allPixels.forEach(i=>{
       const px=i%GW, py=Math.floor(i/GW);
-      ctx.fillStyle=flashes%2===0?'rgba(201,168,76,0.8)':'rgba(201,168,76,0)';
-      ctx.fillRect(ox+px*c, oy+py*c, c, c);
+      ctx.fillStyle=flashes%2===0?'rgba(201,168,76,0.7)':'rgba(0,0,0,0)';
+      ctx.fillRect(ox+px*c2, oy+py*c2, c2, c2);
     });
     if(flashes>=6){clearInterval(flash);draw();}
-  },200);
-
-  draw();
+  },250);
 
   // Ferme le panel mobile si ouvert
   ['lb','feed','me','market'].forEach(p=>{
