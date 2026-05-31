@@ -700,6 +700,7 @@ function renderMePanel(){
           </div>
           ${p.msg?`<div style="font-style:italic;color:var(--mut2);font-size:12px;">"${esc(p.msg)}"</div>`:''}
           ${p.url?`<div style="font-size:12px;"><a href="${esc(p.url)}" target="_blank" style="color:var(--gold);text-decoration:none;">🔗 ${esc(p.url.replace(/^https?:\/\//,''))}</a></div>`:''}
+          <button onclick="highlightUserPixels('${esc(p.name).replace(/'/g,"\\'")}');closeMobilePage('me');" style="background:none;border:1px solid var(--b2);color:var(--gold2);padding:6px;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;text-align:left;transition:color .2s;">📍 Voir mes pixels sur le canvas</button>
           <button onclick="editPurchase(${i})" style="background:none;border:1px solid var(--b2);color:var(--mut2);padding:6px;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;text-align:left;transition:color .2s;">✏ Modifier mes infos</button>
         </div>`;
     });
@@ -1069,7 +1070,21 @@ function updateLb(){
     });
   });
 }
-function addFeed(p){['desk','mob'].forEach(s=>{const el=document.getElementById('feed-'+s);const em=el.querySelector('.estate');if(em)em.remove();const cnt=p.pixels.length;const item=document.createElement('div');item.className='feed-item';item.innerHTML=`<div class="fdot" style="background:${p.color}"></div><div class="fbody"><div><span class="fname">${esc(p.name)}</span> · <strong>${cnt.toLocaleString('fr-FR')} px</strong></div>${p.msg?`<div class="fmsg">"${esc(p.msg)}"</div>`:''}</div><div class="ftime">maintenant</div>`;el.insertBefore(item,el.firstChild);while(el.children.length>30)el.removeChild(el.lastChild);});}
+function addFeed(p){
+  ['desk','mob'].forEach(s=>{
+    const el=document.getElementById('feed-'+s);
+    const em=el.querySelector('.estate');if(em)em.remove();
+    const cnt=p.pixels.length;
+    const item=document.createElement('div');
+    item.className='feed-item';
+    item.style.cursor='pointer';
+    item.title='Voir les pixels sur le canvas';
+    item.innerHTML=`<div class="fdot" style="background:${p.color}"></div><div class="fbody"><div><span class="fname">${esc(p.name)}</span> · <strong>${cnt.toLocaleString('fr-FR')} px</strong></div>${p.msg?`<div class="fmsg">"${esc(p.msg)}"</div>`:''}</div><div class="ftime">maintenant</div>`;
+    item.addEventListener('click',()=>highlightUserPixels(p.name));
+    el.insertBefore(item,el.firstChild);
+    while(el.children.length>30)el.removeChild(el.lastChild);
+  });
+}
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 // ─── INIT ────────────────────────────────────────────
