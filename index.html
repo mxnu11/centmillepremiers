@@ -685,9 +685,13 @@ setTimeout(hideHint,4000);
 // ─── PALETTE ─────────────────────────────────────────
 const ppEl=document.getElementById('pp-pal');
 PALETTE.forEach(hex=>{
-  const s=document.createElement('div');s.className='pp-sw'+(hex===selColor?' active':'');s.style.background=hex;
+  const s=document.createElement('div');
+  s.className='pp-sw'+(hex===selColor?' active':'');
+  s.style.background=hex;
+  s.setAttribute('data-color',hex);
   if(['#ffffff','#e8e4dc','#e8cc80'].includes(hex))s.style.outline='1px solid #2e2e3a';
-  s.onclick=()=>setColor(hex,s);ppEl.appendChild(s);
+  s.onclick=()=>setColor(hex,s);
+  ppEl.appendChild(s);
 });
 function setColor(hex,el){selColor=hex;document.querySelectorAll('.pp-sw').forEach(s=>s.classList.remove('active'));if(el)el.classList.add('active');document.getElementById('pp-cc').value=hex;draw();}
 
@@ -721,18 +725,24 @@ function renderMePanel(){
         <div style="font-family:'Playfair Display',serif;font-size:22px;color:var(--text);">${totalPx.toLocaleString('fr-FR')} <span style="font-size:14px;color:var(--mut2)">pixels possédés</span></div>
         <div style="height:1px;background:var(--b1);"></div>`;
     myPurchases.forEach((p,i)=>{
-      html+=`
+      // Liste chaque pixel individuellement
+      p.pixels.forEach((pixIdx,j)=>{
+        const gx=pixIdx%GW, gy=Math.floor(pixIdx/GW);
+        html+=`
         <div style="background:var(--bg);border:1px solid var(--b2);padding:12px;display:flex;flex-direction:column;gap:8px;">
           <div style="display:flex;align-items:center;gap:8px;">
-            <div style="width:16px;height:16px;background:${p.color};border:1px solid var(--b2);flex-shrink:0;"></div>
-            <div style="font-weight:600;color:var(--text);font-size:13px;">${esc(p.name)}</div>
-            <div style="margin-left:auto;font-family:'DM Mono',monospace;font-size:10px;color:var(--mut2);">${p.pixels.length.toLocaleString('fr-FR')} px</div>
+            <div style="width:14px;height:14px;background:${p.color};border:1px solid var(--b2);flex-shrink:0;border-radius:2px;"></div>
+            <div style="font-weight:600;color:var(--text);font-size:12px;flex:1;">${esc(p.name)}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);">(${gx}, ${gy})</div>
           </div>
-          ${p.msg?`<div style="font-style:italic;color:var(--mut2);font-size:12px;">"${esc(p.msg)}"</div>`:''}
-          ${p.url?`<div style="font-size:12px;"><a href="${esc(p.url)}" target="_blank" style="color:var(--gold);text-decoration:none;">🔗 ${esc(p.url.replace(/^https?:\/\//,''))}</a></div>`:''}
-          <button onclick="highlightUserPixels('${esc(p.name).replace(/'/g,"\\'")}');closeMobilePage('me');" style="background:none;border:1px solid var(--b2);color:var(--gold2);padding:6px;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;text-align:left;transition:color .2s;">📍 Voir mes pixels sur le canvas</button>
-          <button onclick="editPurchase(${i})" style="background:none;border:1px solid var(--b2);color:var(--mut2);padding:6px;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;text-align:left;transition:color .2s;">✏ Modifier mes infos</button>
+          ${p.msg?`<div style="font-style:italic;color:var(--mut2);font-size:11px;">"${esc(p.msg)}"</div>`:''}
+          ${p.url?`<div style="font-size:11px;"><a href="${esc(p.url)}" target="_blank" style="color:var(--gold);text-decoration:none;">🔗 ${esc(p.url.replace(/^https?:\/\//,''))}</a></div>`:''}
+          <div style="display:flex;gap:6px;">
+            <button onclick="highlightSinglePixel(${pixIdx})" style="flex:1;background:none;border:1px solid var(--b2);color:var(--gold2);padding:6px;font-family:'DM Mono',monospace;font-size:9px;cursor:pointer;">📍 Voir</button>
+            <button onclick="editSinglePixel(${i},${j},'${suffix}')" style="flex:1;background:none;border:1px solid var(--b2);color:var(--mut2);padding:6px;font-family:'DM Mono',monospace;font-size:9px;cursor:pointer;">✏ Modifier</button>
+          </div>
         </div>`;
+      });
     });
     html+=`<button onclick="myEmail='';localStorage.removeItem('saved_email');renderMePanel();" style="background:none;border:none;color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;text-decoration:underline;">Se déconnecter</button></div>`;
     el.innerHTML=html;
@@ -765,8 +775,16 @@ function editPurchase(idx){
   document.getElementById('f-url').value=p.url||'';
   document.getElementById('f-msg').value=p.msg||'';
 
-  // Mode édition — cache prix et email, change le bouton
-  document.getElementById('p-sub').textContent=`Modifier vos infos · ${p.pixels.length.toLocaleString('fr-FR')} pixels`;
+  // Sélectionne la couleur actuelle
+  selColor=p.color||'#c9a84c';
+  document.querySelectorAll('.pp-sw').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.pp-sw').forEach(s=>{
+    if(s.getAttribute('data-color')===selColor) s.classList.add('active');
+  });
+  document.getElementById('pp-cc').value=selColor;
+
+  // Mode édition
+  document.getElementById('p-sub').textContent=`Modifier · ${p.pixels.length} pixel${p.pixels.length>1?'s':''}`;
   document.getElementById('p-title').textContent='Modifier vos infos';
   document.getElementById('pricing-table').style.display='none';
   document.getElementById('f-email-row').style.display='none';
@@ -781,20 +799,29 @@ function saveEdit(p){
   if(!name){const el=document.getElementById('f-name');el.classList.add('err');el.focus();setTimeout(()=>el.classList.remove('err'),2000);return;}
   const url=document.getElementById('f-url').value.trim();
   const msg=document.getElementById('f-msg').value.trim();
+  const color=selColor;
 
-  // Met à jour dans Firebase via la clé directe
-  if(p.key){
-    db.ref('pixels/'+p.key).update({name, url, msg});
+  // Firebase
+  if(p.key) db.ref('pixels/'+p.key).update({name,url,msg,color});
+
+  // Local purchases
+  const i=purchases.findIndex(x=>x.key===p.key);
+  if(i>=0){
+    purchases[i].name=name;
+    purchases[i].url=url;
+    purchases[i].msg=msg;
+    purchases[i].color=color;
   }
+  p.name=name; p.url=url; p.msg=msg; p.color=color;
 
-  // Met à jour localement
-  p.name=name; p.url=url; p.msg=msg;
-
-  // Met à jour aussi dans purchases
-  const idx=purchases.findIndex(x=>x.key===p.key);
-  if(idx>=0){purchases[idx].name=name;purchases[idx].url=url;purchases[idx].msg=msg;}
+  // Redessine pixels avec nouvelle couleur
+  const r=parseInt(color.slice(1,3),16),g=parseInt(color.slice(3,5),16),b=parseInt(color.slice(5,7),16);
+  p.pixels.forEach(pi=>{
+    if(pi<GW*GH){pixelData[pi*3]=r;pixelData[pi*3+1]=g;pixelData[pi*3+2]=b;}
+  });
 
   closePopup();
+  draw();
   renderMePanel();
   updateLb();
 }
@@ -1038,13 +1065,13 @@ function handleBuy(){
     if(remaining<=0){
       btn.textContent='Placer mon pixel →';
       btn.disabled=false;
-      alert(`Tu as déjà atteint la limite de 15 pixels gratuits avec cet email.`);
+      alert(`Tu as déjà atteint la limite de 15 pixels gratuits.`);
       return;
     }
     if(selected.size>remaining){
       btn.textContent='Placer mon pixel →';
       btn.disabled=false;
-      alert(`Tu ne peux placer que ${remaining} pixel${remaining>1?'s':''} supplémentaire${remaining>1?'s':''} avec cet email (limite : 15 px gratuits).`);
+      alert(`Tu ne peux placer que ${remaining} pixel${remaining>1?'s':''} supplémentaire${remaining>1?'s':''} (limite : 15 px gratuits).`);
       return;
     }
     const purchase={name,email,url,msg,color:selColor,pixels:[...selected],total:0,ts:Date.now()};
@@ -1096,6 +1123,118 @@ function onNewPurchase(p){
   document.getElementById('hd-pct').textContent=pct+' %';
   updateLb();addFeed(p);
 }
+
+function highlightUserPixels(name){
+  const userPurchases=purchases.filter(p=>p.name===name);
+  if(!userPurchases.length) return;
+  const allPixels=userPurchases.flatMap(p=>p.pixels);
+  if(!allPixels.length) return;
+  const xs=allPixels.map(i=>i%GW), ys=allPixels.map(i=>Math.floor(i/GW));
+  const cx=Math.round((Math.min(...xs)+Math.max(...xs))/2);
+  const cy=Math.round((Math.min(...ys)+Math.max(...ys))/2);
+  ['lb','feed','me','market'].forEach(p=>{const el=document.getElementById('pg-'+p);if(el)el.classList.remove('open');});
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('nb-canvas').classList.add('active');
+  setTimeout(()=>{
+    zoom=8; document.getElementById('zlbl').textContent='8×';
+    const b=baseCell(), c=b*8, W=cv.width, H=cv.height;
+    const gridOffX=Math.floor((W-GW*c)/2), gridOffY=Math.floor((H-GH*c)/2);
+    panX=Math.floor(W/2)-gridOffX-cx*c-Math.floor(c/2);
+    panY=Math.floor(H/2)-gridOffY-cy*c-Math.floor(c/2);
+    draw();
+    let flashes=0;
+    const flash=setInterval(()=>{
+      flashes++;
+      const {ox,oy}=originXY(), c2=cellPx();
+      allPixels.forEach(i=>{
+        const px=i%GW, py=Math.floor(i/GW);
+        ctx.fillStyle=flashes%2===0?'rgba(201,168,76,0.7)':'rgba(0,0,0,0)';
+        ctx.fillRect(ox+px*c2, oy+py*c2, c2, c2);
+      });
+      if(flashes>=6){clearInterval(flash);draw();}
+    },250);
+  },50);
+}
+
+function highlightSinglePixel(pixIdx){
+  const gx=pixIdx%GW, gy=Math.floor(pixIdx/GW);
+  // Ferme panels mobiles
+  ['lb','feed','me','market'].forEach(p=>{const el=document.getElementById('pg-'+p);if(el)el.classList.remove('open');});
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('nb-canvas').classList.add('active');
+  setTimeout(()=>{
+    zoom=8; document.getElementById('zlbl').textContent='8×';
+    const b=baseCell(), c=b*8, W=cv.width, H=cv.height;
+    const gridOffX=Math.floor((W-GW*c)/2), gridOffY=Math.floor((H-GH*c)/2);
+    panX=Math.floor(W/2)-gridOffX-gx*c-Math.floor(c/2);
+    panY=Math.floor(H/2)-gridOffY-gy*c-Math.floor(c/2);
+    draw();
+    let flashes=0;
+    const flash=setInterval(()=>{
+      flashes++;
+      const {ox,oy}=originXY(), c2=cellPx();
+      ctx.fillStyle=flashes%2===0?'rgba(201,168,76,0.8)':'rgba(0,0,0,0)';
+      ctx.fillRect(ox+gx*c2, oy+gy*c2, c2, c2);
+      if(flashes>=6){clearInterval(flash);draw();}
+    },250);
+  },50);
+}
+
+function editSinglePixel(purchaseIdx, pixelSubIdx, suffix){
+  const myPurchases=purchases.filter(p=>p.email===myEmail);
+  const p=myPurchases[purchaseIdx];
+  if(!p) return;
+
+  // Stocke les infos pour saveEdit
+  window._editingPurchase=p;
+  window._editingPixelIdx=pixelSubIdx;
+
+  // Pre-fill
+  document.getElementById('f-name').value=p.name||'';
+  document.getElementById('f-url').value=p.url||'';
+  document.getElementById('f-msg').value=p.msg||'';
+  selColor=p.color||'#c9a84c';
+  document.querySelectorAll('.pp-sw').forEach(s=>s.classList.toggle('active',s.getAttribute('data-color')===selColor));
+  document.getElementById('pp-cc').value=selColor;
+
+  const gx=p.pixels[pixelSubIdx]%GW, gy=Math.floor(p.pixels[pixelSubIdx]/GW);
+  document.getElementById('p-sub').textContent=`Pixel (${gx}, ${gy})`;
+  document.getElementById('p-title').textContent='Modifier ce pixel';
+  document.getElementById('pricing-table').style.display='none';
+  document.getElementById('f-email-row').style.display='none';
+  const btn=document.querySelector('.btn-cta');
+  btn.textContent='Enregistrer';
+  btn.onclick=saveSinglePixel;
+  document.getElementById('overlay').classList.add('open');
+}
+
+function saveSinglePixel(){
+  const p=window._editingPurchase;
+  if(!p) return;
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){const el=document.getElementById('f-name');el.classList.add('err');el.focus();setTimeout(()=>el.classList.remove('err'),2000);return;}
+  const url=document.getElementById('f-url').value.trim();
+  const msg=document.getElementById('f-msg').value.trim();
+  const color=selColor;
+
+  // Firebase
+  if(p.key) db.ref('pixels/'+p.key).update({name,url,msg,color});
+
+  // Local
+  const i=purchases.findIndex(x=>x.key===p.key);
+  if(i>=0){purchases[i].name=name;purchases[i].url=url;purchases[i].msg=msg;purchases[i].color=color;}
+  p.name=name;p.url=url;p.msg=msg;p.color=color;
+
+  // Redessine avec nouvelle couleur
+  const r=parseInt(color.slice(1,3),16),g=parseInt(color.slice(3,5),16),b=parseInt(color.slice(5,7),16);
+  p.pixels.forEach(pi=>{if(pi<GW*GH){pixelData[pi*3]=r;pixelData[pi*3+1]=g;pixelData[pi*3+2]=b;}});
+
+  closePopup();
+  draw();
+  renderMePanel();
+  updateLb();
+}
+
 function highlightUserPixels(name){
   const userPurchases=purchases.filter(p=>p.name===name);
   if(!userPurchases.length) return;
