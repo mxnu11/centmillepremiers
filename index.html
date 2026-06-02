@@ -298,6 +298,10 @@ const GW=400, GH=250, TOTAL=GW*GH;
 const PALETTE=['#c9a84c','#e8cc80','#ffffff','#e8e4dc','#c0392b','#e67e22','#f1c40f','#2ecc71','#1abc9c','#3498db','#9b59b6','#e91e63','#0d0d0f','#1a1a22','#5a5868','#7a7688','#00bcd4','#ff5722','#8bc34a','#607d8b'];
 const ZOOMS=[1,2,3,4,6,8,12,16,24,32];
 
+// ─── FLAGS ───────────────────────────────────────────
+const FREE_MODE = false;      // true = pixels gratuits, false = paiement Stripe
+const MARKET_ENABLED = false; // true = marché actif, false = "à venir"
+
 // ─── STATE ───────────────────────────────────────────
 const pixelData=new Uint8Array(GW*GH*3);
 const selected=new Set();
@@ -812,9 +816,6 @@ function openPopup(){
   document.getElementById('overlay').classList.add('open');
 }
 
-// ─── MODE GRATUIT (48h) ──────────────────────────────
-// Passer à true pour activer les pixels gratuits, false pour revenir au paiement
-const FREE_MODE = false;
 const MARKET_COMMISSION = 0.12; // 12% commission
 const MAX_RESALE_MULTIPLIER = 10; // max 10× prix initial
 
