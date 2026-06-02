@@ -1044,7 +1044,7 @@ function handleBuy(){
     if(selected.size>remaining){
       btn.textContent='Placer mon pixel →';
       btn.disabled=false;
-      alert(`Tu ne peux placer que ${remaining} pixel${remaining>1?'s':''} supplémentaire${remaining>1?'s':''} avec cet email (limite : 15 px gratuits).`);
+      alert(`Tu ne peux placer que ${remaining} pixel${remaining>1?'s':''} supplémentaire${remaining>1?'s':''}(limite : 15 px gratuits).`);
       return;
     }
     const purchase={name,email,url,msg,color:selColor,pixels:[...selected],total:0,ts:Date.now()};
