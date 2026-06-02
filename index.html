@@ -502,7 +502,8 @@ function updateStrip(){
   const total=calcPrice(n);
   si.style.display='flex';
   document.getElementById('strip-count').textContent=n.toLocaleString('fr-FR');
-  document.getElementById('strip-price').textContent=total+' € · '+tier.label;
+  document.getElementById('strip-price').textContent=FREE_MODE?'Gratuit 🎉':total+' € · '+tier.label;
+  cb.textContent=FREE_MODE?'✦ Placer mon pixel →':'✦ Réserver →';
   cb.classList.add('vis');
 }
 
@@ -797,20 +798,23 @@ function saveEdit(p){
 function openPopup(){
   // Reset au mode achat
   document.getElementById('p-title').textContent='Réserver vos pixels';
-  document.getElementById('pricing-table').style.display='';
+  document.getElementById('pricing-table').style.display=FREE_MODE?'none':'';
   document.getElementById('f-email-row').style.display='';
   const btn=document.querySelector('.btn-cta');
-  btn.textContent='Procéder au paiement →';
+  btn.textContent=FREE_MODE?'Placer mon pixel →':'Procéder au paiement →';
   btn.onclick=handleBuy;
   const n=selected.size;
   const tier=getTier(n);
   const total=calcPrice(n);
-  document.getElementById('p-sub').textContent=`${n.toLocaleString('fr-FR')} pixel${n>1?'s':''} · ${tier.label} · Total ${total} €`;
+  document.getElementById('p-sub').textContent=FREE_MODE
+    ?`${n.toLocaleString('fr-FR')} pixel${n>1?'s':''} · Gratuit 🎉`
+    :`${n.toLocaleString('fr-FR')} pixel${n>1?'s':''} · ${tier.label} · Total ${total} €`;
   document.getElementById('overlay').classList.add('open');
 }
 
-// ─── MARKET ENABLED FLAG ─────────────────────────────
-const MARKET_ENABLED = false; // passer à true pour activer le marché
+// ─── MODE GRATUIT (48h) ──────────────────────────────
+// Passer à true pour activer les pixels gratuits, false pour revenir au paiement
+const FREE_MODE = false;
 const MARKET_COMMISSION = 0.12; // 12% commission
 const MAX_RESALE_MULTIPLIER = 10; // max 10× prix initial
 
@@ -1024,6 +1028,22 @@ function handleBuy(){
   const btn=document.querySelector('.btn-cta');
   btn.textContent='Chargement...';
   btn.disabled=true;
+
+  // Mode gratuit — bypass Stripe
+  if(FREE_MODE){
+    const purchase={name,email,url,msg,color:selColor,pixels:[...selected],total:0,ts:Date.now()};
+    savePurchase(purchase);
+    myEmail=email;
+    localStorage.setItem('saved_email',email);
+    selected.clear();
+    closePopup();
+    btn.textContent='Procéder au paiement →';
+    btn.disabled=false;
+    document.getElementById('conf-body').innerHTML=
+      `🎉 Pixels réservés !<br><br><strong>${purchase.pixels.length.toLocaleString('fr-FR')} pixel${purchase.pixels.length>1?'s':''}</strong> affichés sous le nom <strong>${esc(name)}</strong>.<br><br>Retrouve-les dans <strong>Mes px</strong>.`;
+    document.getElementById('confirm').classList.add('open');
+    return;
+  }
 
   fetch('/.netlify/functions/create-checkout',{
     method:'POST',
