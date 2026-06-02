@@ -299,7 +299,7 @@ const PALETTE=['#c9a84c','#e8cc80','#ffffff','#e8e4dc','#c0392b','#e67e22','#f1c
 const ZOOMS=[1,2,3,4,6,8,12,16,24,32];
 
 // ─── FLAGS ───────────────────────────────────────────
-const FREE_MODE = true;      // true = pixels gratuits, false = paiement Stripe
+const FREE_MODE = false;      // true = pixels gratuits, false = paiement Stripe
 const MARKET_ENABLED = false; // true = marché actif, false = "à venir"
 
 // ─── STATE ───────────────────────────────────────────
@@ -811,7 +811,7 @@ function openPopup(){
   const tier=getTier(n);
   const total=calcPrice(n);
   document.getElementById('p-sub').textContent=FREE_MODE
-    ?`${n.toLocaleString('fr-FR')} pixel${n>1?'s':''} · Gratuit 🎉`
+    ?`${n.toLocaleString('fr-FR')} pixel${n>1?'s':''} · Gratuit 🎉 · Limite 15 px/email`
     :`${n.toLocaleString('fr-FR')} pixel${n>1?'s':''} · ${tier.label} · Total ${total} €`;
   document.getElementById('overlay').classList.add('open');
 }
@@ -1032,16 +1032,31 @@ function handleBuy(){
 
   // Mode gratuit — bypass Stripe
   if(FREE_MODE){
+    // Vérifie la limite de 15 pixels par email
+    const alreadyOwned=purchases.filter(p=>p.email===email).reduce((s,p)=>s+p.pixels.length,0);
+    const remaining=15-alreadyOwned;
+    if(remaining<=0){
+      btn.textContent='Placer mon pixel →';
+      btn.disabled=false;
+      alert(`Tu as déjà atteint la limite de 15 pixels gratuits avec cet email.`);
+      return;
+    }
+    if(selected.size>remaining){
+      btn.textContent='Placer mon pixel →';
+      btn.disabled=false;
+      alert(`Tu ne peux placer que ${remaining} pixel${remaining>1?'s':''} supplémentaire${remaining>1?'s':''} avec cet email (limite : 15 px gratuits).`);
+      return;
+    }
     const purchase={name,email,url,msg,color:selColor,pixels:[...selected],total:0,ts:Date.now()};
     savePurchase(purchase);
     myEmail=email;
     localStorage.setItem('saved_email',email);
     selected.clear();
     closePopup();
-    btn.textContent='Procéder au paiement →';
+    btn.textContent='Placer mon pixel →';
     btn.disabled=false;
     document.getElementById('conf-body').innerHTML=
-      `🎉 Pixels réservés !<br><br><strong>${purchase.pixels.length.toLocaleString('fr-FR')} pixel${purchase.pixels.length>1?'s':''}</strong> affichés sous le nom <strong>${esc(name)}</strong>.<br><br>Retrouve-les dans <strong>Mes px</strong>.`;
+      `🎉 Pixels placés !<br><br><strong>${purchase.pixels.length.toLocaleString('fr-FR')} pixel${purchase.pixels.length>1?'s':''}</strong> affichés sous le nom <strong>${esc(name)}</strong>.<br><br>${15-alreadyOwned-purchase.pixels.length>0?`Il te reste <strong>${15-alreadyOwned-purchase.pixels.length} pixel${15-alreadyOwned-purchase.pixels.length>1?'s':''}</strong> gratuit${15-alreadyOwned-purchase.pixels.length>1?'s':''}.`:'Tu as utilisé tous tes pixels gratuits !'}<br><br>Retrouve-les dans <strong>Mes px</strong>.`;
     document.getElementById('confirm').classList.add('open');
     return;
   }
