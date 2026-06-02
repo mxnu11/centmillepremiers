@@ -299,7 +299,7 @@ const PALETTE=['#c9a84c','#e8cc80','#ffffff','#e8e4dc','#c0392b','#e67e22','#f1c
 const ZOOMS=[1,2,3,4,6,8,12,16,24,32];
 
 // ─── FLAGS ───────────────────────────────────────────
-const FREE_MODE = true;      // true = pixels gratuits, false = paiement Stripe
+const FREE_MODE = false;      // true = pixels gratuits, false = paiement Stripe
 const MARKET_ENABLED = false; // true = marché actif, false = "à venir"
 
 // ─── STATE ───────────────────────────────────────────
@@ -1044,7 +1044,7 @@ function handleBuy(){
     if(selected.size>remaining){
       btn.textContent='Placer mon pixel →';
       btn.disabled=false;
-      alert(`Tu ne peux placer que ${remaining} pixel${remaining>1?'s':''} supplémentaire${remaining>1?'s':''}(limite : 15 px gratuits).`);
+      alert(`Tu ne peux placer que ${remaining} pixel${remaining>1?'s':''} supplémentaire${remaining>1?'s':''} avec cet email (limite : 15 px gratuits).`);
       return;
     }
     const purchase={name,email,url,msg,color:selColor,pixels:[...selected],total:0,ts:Date.now()};
